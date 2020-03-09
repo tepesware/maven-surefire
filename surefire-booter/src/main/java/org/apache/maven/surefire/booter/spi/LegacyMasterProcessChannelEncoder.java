@@ -32,6 +32,7 @@ import org.apache.maven.surefire.shared.codec.binary.Base64;
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedChannelException;
 import java.nio.channels.WritableByteChannel;
 import java.nio.charset.Charset;
 import java.util.Map;
@@ -286,14 +287,19 @@ public class LegacyMasterProcessChannelEncoder implements MasterProcessChannelEn
         encodeAndPrintEvent( event );
     }
 
-    private void encodeAndPrintEvent( StringBuilder command )
+    private void encodeAndPrintEvent( StringBuilder event )
     {
-        byte[] array = command.append( '\n' ).toString().getBytes( STREAM_ENCODING );
+        byte[] array = event.append( '\n' ).toString().getBytes( STREAM_ENCODING );
         synchronized ( out )
         {
             try
             {
                 out.write( ByteBuffer.wrap( array ) );
+            }
+            catch ( ClosedChannelException e )
+            {
+                DumpErrorSingleton.getSingleton()
+                    .dumpText( "Channel closed while writing the event '" + event + "'." );
             }
             catch ( IOException e )
             {
@@ -410,7 +416,7 @@ public class LegacyMasterProcessChannelEncoder implements MasterProcessChannelEn
      *
      * @param operation opcode
      * @param runMode   run mode
-     * @return encoded command
+     * @return encoded event
      */
     static StringBuilder encodeOpcode( String operation, String runMode )
     {

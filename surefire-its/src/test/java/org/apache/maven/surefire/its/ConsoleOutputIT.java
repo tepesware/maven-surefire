@@ -19,10 +19,17 @@ package org.apache.maven.surefire.its;
  * under the License.
  */
 
+import com.googlecode.junittoolbox.ParallelParameterized;
 import org.apache.maven.surefire.its.fixture.OutputValidator;
 import org.apache.maven.surefire.its.fixture.SurefireJUnit4IntegrationTestCase;
+import org.apache.maven.surefire.its.fixture.SurefireLauncher;
 import org.apache.maven.surefire.its.fixture.TestFile;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
+
+import java.util.ArrayList;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -31,32 +38,71 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  *
  * @author Kristian Rosenvold
  */
+@RunWith( ParallelParameterized.class )
 public class ConsoleOutputIT
     extends SurefireJUnit4IntegrationTestCase
 {
+    @Parameters
+    public static Iterable<Object[]> data()
+    {
+        ArrayList<Object[]> args = new ArrayList<>();
+        args.add( new Object[] { "tcp" } );
+        args.add( new Object[] { null } );
+        return args;
+    }
+
+    @Parameter
+    @SuppressWarnings( "checkstyle:visibilitymodifier" )
+    public String profileId;
+
     @Test
     public void properNewlinesAndEncodingWithDefaultEncodings()
     {
-        final OutputValidator outputValidator =
-            unpack( "/consoleOutput" ).forkOnce().executeTest();
+        SurefireLauncher launcher =
+            unpack( "/consoleOutput", profileId == null ? "" : profileId )
+                .forkOnce();
 
-        validate( outputValidator, true );
+        if ( profileId != null )
+        {
+            launcher.activateProfile( "tcp" );
+        }
+
+        OutputValidator outputValidator = launcher.executeTest();
+
+        validate( outputValidator, profileId == null );
     }
 
     @Test
     public void properNewlinesAndEncodingWithDifferentEncoding()
     {
-        final OutputValidator outputValidator =
-            unpack( "/consoleOutput" ).forkOnce().argLine( "-Dfile.encoding=UTF-16" ).executeTest();
+        SurefireLauncher launcher =
+            unpack( "/consoleOutput", profileId == null ? "" : profileId )
+                .forkOnce()
+                .argLine( "-Dfile.encoding=UTF-16" );
 
-        validate( outputValidator, true );
+        if ( profileId != null )
+        {
+            launcher.activateProfile( "tcp" );
+        }
+
+        OutputValidator outputValidator = launcher.executeTest();
+
+        validate( outputValidator, profileId == null );
     }
 
     @Test
     public void properNewlinesAndEncodingWithoutFork()
     {
-        final OutputValidator outputValidator =
-            unpack( "/consoleOutput" ).forkNever().executeTest();
+        SurefireLauncher launcher =
+            unpack( "/consoleOutput", profileId == null ? "" : profileId )
+                .forkNever();
+
+        if ( profileId != null )
+        {
+            launcher.activateProfile( "tcp" );
+        }
+
+        OutputValidator outputValidator = launcher.executeTest();
 
         validate( outputValidator, false );
     }
@@ -75,6 +121,8 @@ public class ConsoleOutputIT
 
         if ( includeShutdownHook )
         {
+            //todo it should not be reported in the last test which is completed
+            //todo this text should be in null-output.txt
             outputFile.assertContainsText( "Printline in shutdown hook" );
         }
     }
@@ -82,9 +130,17 @@ public class ConsoleOutputIT
     @Test
     public void largerSoutThanMemory()
     {
-        unpack( "consoleoutput-noisy" )
+        SurefireLauncher launcher =
+            unpack( "consoleoutput-noisy", profileId == null ? "" : "-" + profileId )
                 .setMavenOpts( "-Xmx64m" )
-                .sysProp( "thousand", "32000" )
-                .executeTest();
+                .sysProp( "thousand", "32000" );
+
+        if ( profileId != null )
+        {
+            launcher.activateProfile( "tcp" );
+        }
+
+        launcher.executeTest()
+            .verifyErrorFreeLog();
     }
 }
