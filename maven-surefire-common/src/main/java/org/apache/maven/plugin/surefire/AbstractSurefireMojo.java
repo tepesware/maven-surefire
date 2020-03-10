@@ -2283,7 +2283,7 @@ public abstract class AbstractSurefireMojo
 
         ForkNodeFactory forkNode = getForkNodeFactory();
 
-        getConsoleLogger().debug( "Found implementation of fork node factory: " + forkNode.getClass() );
+        getConsoleLogger().debug( "Found implementation of fork node factory: " + forkNode.getClass().getName() );
 
         if ( canExecuteProviderWithModularPath( platform ) )
         {
